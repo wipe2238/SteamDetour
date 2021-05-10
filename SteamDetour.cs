@@ -14,7 +14,7 @@ namespace SteamDetour
 
         static void Error( string caption, params string[] message )
         {
-            MessageBox.Show( string.Join( "\n", message ), $"SteamDetour : {caption ?? "Error"}", MessageBoxButtons.OK, MessageBoxIcon.Error );
+            MessageBox.Show( string.Join( "\n", message ), $"SteamDetour : {(string.IsNullOrEmpty( caption ) ? "Error" : caption)}", MessageBoxButtons.OK, MessageBoxIcon.Error );
             Environment.Exit( 1 );
         }
 
@@ -23,17 +23,17 @@ namespace SteamDetour
         {
             // Validate arguments
             if( args.Length != 2 )
-                Error( "Usage", "SteamDetour.exe [exe path] %command%" );
+                Error( "Usage", @"SteamDetour.exe [C:\Full\Path\To.exe] %command%" );
             else if( !File.Exists( args[0] ) )
                 Error( "File not found", args[0] );
             else if( !Path.IsPathRooted( args[0] ) )
-                Error( "Invalid game path", "Full path to game executable required" );
+                Error( "Invalid path", "Full path to game executable required", args[0] );
 
             string gameExe = args[0];
 
             RegistryKey steamRegistry = Registry.LocalMachine.OpenSubKey( "SOFTWARE\\Wow6432Node\\Valve\\Steam" );
             if( steamRegistry == null )
-                Error( "ERROR", "Cannot find Steam install" );
+                Error( string.Empty, "Cannot find Steam installation directory" );
             string overlayExe = Path.Combine( (string)steamRegistry.GetValue( "InstallPath" ), "GameOverlayUI.exe" );
             if( !File.Exists( overlayExe ) )
                 Error( "File not found", overlayExe );
