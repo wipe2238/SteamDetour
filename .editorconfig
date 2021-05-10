@@ -1,0 +1,21 @@
+##
+## https://editorconfig.org/
+##
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+##
+## https://docs.microsoft.com/en-us/visualstudio/ide/editorconfig-code-style-settings-reference
+## https://docs.microsoft.com/en-us/visualstudio/ide/editorconfig-naming-conventions
+## https://github.com/dotnet/roslyn/blob/master/.editorconfig
+##
+
+[*.cs]
+indent_style = space
+dotnet_sort_system_directives_first = true

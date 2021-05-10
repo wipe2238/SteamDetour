@@ -1,0 +1,52 @@
+name: Build
+
+on:
+ push:
+  paths:
+  - '.github/workflows/Build.yml'
+  - '**.sln'
+  - '**.csproj'
+  - '**.cs'
+ pull_request:
+  paths:
+  - '.github/workflows/Build.yml'
+  - '**.sln'
+  - '**.csproj'
+  - '**.cs'
+
+env:
+ DOTNET_CLI_TELEMETRY_OPTOUT: true
+ DOTNET_NOLOGO:               true
+
+defaults:
+ run:
+  shell: bash
+
+jobs:
+
+ SteamDetour:
+  runs-on: windows-latest
+
+  steps:
+
+  - name: Clone
+    uses: actions/checkout@v2
+
+  - name:  Config
+    run:   echo MSBUILD_EXE="$("/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" -latest -requires Microsoft.Component.MSBuild -find MSBuild/**/Bin/MSBuild.exe)" >> $GITHUB_ENV
+
+  - name:  Build
+    run:   |
+           :
+           "$MSBUILD_EXE" SteamDetour.sln -p:Configuration=Release
+           mv SteamDetour/Build/Release/SteamDetour.exe SteamDetour.exe
+
+  - name:  Upload
+    uses:  actions/upload-artifact@v2
+    with:
+     name:              SteamDetour
+     if-no-files-found: error
+     path:              |
+                        SteamDetour.exe
+                        README.md
+                        LICENSE.md
