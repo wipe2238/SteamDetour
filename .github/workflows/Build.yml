@@ -39,7 +39,7 @@ jobs:
     run:   |
            :
            "$MSBUILD_EXE" SteamDetour.sln -p:Configuration=Release
-           mv SteamDetour/Build/Release/SteamDetour.exe SteamDetour.exe
+           mv Build/Release/SteamDetour.exe SteamDetour.exe
 
   - name:  Upload
     uses:  actions/upload-artifact@v2
