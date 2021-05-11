@@ -5,10 +5,17 @@ using System.Windows.Forms;
 
 using Microsoft.Win32;
 
+// GameOverlayUI.exe -pid {game.Id} -manuallyclearframes 0
+//    overlay, screenshot, playtime
+// GameOverlayUI.exe -steampid {steam.Id} -pid {game.Id} -manuallyclearframes 0
+//    overlay, screenshot, playtime, friends list, chat, browser
+//    defunc (browser, friends list, chat) : does not react to keypress
+
 namespace SteamDetour
 {
     internal static class SteamDetour
     {
+        static Process steam;
         static Process game;
         static Process overlay;
 
@@ -28,7 +35,6 @@ namespace SteamDetour
                 Error( "File not found", args[0] );
             else if( !Path.IsPathRooted( args[0] ) )
                 Error( "Invalid path", "Full path to game executable required", args[0] );
-
             string gameExe = args[0];
 
             RegistryKey steamRegistry = Registry.LocalMachine.OpenSubKey( "SOFTWARE\\Wow6432Node\\Valve\\Steam" );
@@ -38,6 +44,15 @@ namespace SteamDetour
             if( !File.Exists( overlayExe ) )
                 Error( "File not found", overlayExe );
 
+            // Find the Steam process
+            // Required for browser
+            Process[] proc = Process.GetProcessesByName( "Steam" );
+            if( proc.Length == 0 )
+                Error( "Process not found", "Cannot find Steam process" );
+            else if( proc.Length != 1 )
+                Error( "Process not found", "More than one Steam process running?" );
+            steam = proc[0];
+
             // Run the game
             Debug.WriteLine( $"Detour {args[1]} -> {gameExe}" );
             ProcessStartInfo gameInfo = new ProcessStartInfo();
@@ -45,20 +60,19 @@ namespace SteamDetour
             gameInfo.FileName = gameExe;
             game = Process.Start( gameInfo );
 
-            // ...wait for it...
-            game.WaitForExit( 1000 );
-
             bool hooked = false;
             while( !hooked )
             {
+                game.WaitForExit( 1000 );
+
                 // Run the overlay
                 // based on https://github.com/SuiMachine/Steam-Overlay-Hooking-Helper
                 ProcessStartInfo overlayInfo = new ProcessStartInfo();
                 overlayInfo.WorkingDirectory = Path.GetDirectoryName( overlayExe );
                 overlayInfo.FileName = overlayExe;
-                overlayInfo.Arguments = $"-pid {game.Id} -manuallyclearframes 0";
+                overlayInfo.Arguments = $"-steampid {steam.Id} -pid {game.Id} -manuallyclearframes 0";
                 overlay = Process.Start( overlayInfo );
-                Debug.WriteLine( $"GAME = {game.Id} OVERLAY = {overlay.Id}" );
+                Debug.WriteLine( $"STEAM = {steam.Id} GAME = {game.Id} OVERLAY = {overlay.Id}" );
                 hooked = true;
             }
 

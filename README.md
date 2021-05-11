@@ -11,6 +11,6 @@ Steam features
 
 - [x] Play time
 - [x] Screenshots
-- [ ] Friends
-- [ ] Chat
-- [ ] Browser
+- [x] Friends (mostly works, does not react to keypress (search bar))
+- [ ] Chat (does not react to keypress)
+- [x] Browser (mostly works, does not react to keypress)
