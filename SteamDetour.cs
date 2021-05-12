@@ -9,12 +9,17 @@ using Microsoft.Win32;
 //    overlay, screenshot, playtime
 // GameOverlayUI.exe -steampid {steam.Id} -pid {game.Id} -manuallyclearframes 0
 //    overlay, screenshot, playtime, friends list, chat, browser
-//    defunc (browser, friends list, chat) : does not react to keypress
+//    defunc (browser, friends list, chat): does not react to keypress
 
 namespace SteamDetour
 {
     internal static class SteamDetour
     {
+        static readonly string[] steamRegistry = {
+            @"SOFTWARE\Wow6432Node\Valve\Steam\InstallPath",
+            @"SOFTWARE\Valve\Steam\InstallPath"
+        };
+
         static Process steam;
         static Process game;
         static Process overlay;
@@ -29,20 +34,38 @@ namespace SteamDetour
         static void Main( string[] args )
         {
             // Validate arguments
-            if( args.Length != 2 )
-                Error( "Usage", @"SteamDetour.exe [C:\Full\Path\To.exe] %command%" );
+            if( args.Length < 2 )
+                Error( "Usage", @"C:\Path\SteamDetour.exe C:\Path\Game.exe %command%", "", "Full path to both executables is required." );
             else if( !File.Exists( args[0] ) )
                 Error( "File not found", args[0] );
             else if( !Path.IsPathRooted( args[0] ) )
                 Error( "Invalid path", "Full path to game executable required", args[0] );
             string gameExe = args[0];
 
-            RegistryKey steamRegistry = Registry.LocalMachine.OpenSubKey( "SOFTWARE\\Wow6432Node\\Valve\\Steam" );
-            if( steamRegistry == null )
+            // Find the Steam installation directory
+            // Required for base functionality
+            string overlayExe = string.Empty;
+            foreach( string registry in steamRegistry )
+            {
+                RegistryKey key = Registry.LocalMachine.OpenSubKey( Path.GetDirectoryName( registry ) );
+                if( key == null )
+                    continue;
+
+                object value = key.GetValue( Path.GetFileName( registry ) );
+                if( value != null )
+                {
+                    if( !Directory.Exists( (string)value ) )
+                        continue;
+
+                    overlayExe = Path.Combine( (string)value, "GameOverlayUI.exe" );
+                    break;
+                }
+            }
+            if( string.IsNullOrEmpty( overlayExe ) )
                 Error( string.Empty, "Cannot find Steam installation directory" );
-            string overlayExe = Path.Combine( (string)steamRegistry.GetValue( "InstallPath" ), "GameOverlayUI.exe" );
-            if( !File.Exists( overlayExe ) )
+            else if( !File.Exists( overlayExe ) )
                 Error( "File not found", overlayExe );
+            Debug.WriteLine( $"OVERLAY = {overlayExe}" );
 
             // Find the Steam process
             // Required for browser
