@@ -42,7 +42,7 @@ jobs:
            mv Build/Release/SteamDetour.exe SteamDetour.exe
 
   - name:  Upload
-    uses:  actions/upload-artifact@v4
+    uses:  actions/upload-artifact@v6
     with:
      name:              SteamDetour
      if-no-files-found: error
