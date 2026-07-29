@@ -24,84 +24,125 @@ namespace SteamDetour
         static Process game;
         static Process overlay;
 
-        static void Error( string caption, params string[] message )
+        static void Error(string caption, params string[] message)
         {
-            MessageBox.Show( string.Join( "\n", message ), $"SteamDetour : {(string.IsNullOrEmpty( caption ) ? "Error" : caption)}", MessageBoxButtons.OK, MessageBoxIcon.Error );
-            Environment.Exit( 1 );
+            MessageBox.Show(string.Join("\n", message), $"SteamDetour : {(string.IsNullOrEmpty(caption) ? "Error" : caption)}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Environment.Exit(1);
         }
 
         [STAThread]
-        static void Main( string[] args )
+        static void Main(string[] args)
         {
             // Validate arguments
-            if( args.Length < 2 )
-                Error( "Usage", @"C:\Path\SteamDetour.exe C:\Path\Game.exe %command%", "", "Full path to both executables is required." );
-            else if( !File.Exists( args[0] ) )
-                Error( "File not found", args[0] );
-            else if( !Path.IsPathRooted( args[0] ) )
-                Error( "Invalid path", "Full path to game executable required", args[0] );
+            if (args.Length < 2)
+            {
+                Error("Usage", @"C:\Path\SteamDetour.exe C:\Path\Game.exe %command%", "", "Full path to both executables is required.");
+            }
+            else if (!File.Exists(args[0]))
+            {
+                Error("File not found", args[0]);
+            }
+            else if (!Path.IsPathRooted(args[0]))
+            {
+                Error("Invalid path", "Full path to game executable required", args[0]);
+            }
             string gameExe = args[0];
 
             // Find the Steam installation directory
             // Required for base functionality
             string overlayExe = string.Empty;
-            foreach( string registry in steamRegistry )
+            string newOverlayExe = string.Empty;
+            bool x32BitOverlayFound = false;
+            bool x64BitOverlayFound = false;
+            foreach (string registry in steamRegistry)
             {
-                RegistryKey key = Registry.LocalMachine.OpenSubKey( Path.GetDirectoryName( registry ) );
-                if( key == null )
-                    continue;
-
-                object value = key.GetValue( Path.GetFileName( registry ) );
-                if( value != null )
+                RegistryKey key = Registry.LocalMachine.OpenSubKey(Path.GetDirectoryName(registry));
+                if (key == null)
                 {
-                    if( !Directory.Exists( (string)value ) )
-                        continue;
+                    continue;
+                }
 
-                    overlayExe = Path.Combine( (string)value, "GameOverlayUI.exe" );
+                object value = key.GetValue(Path.GetFileName(registry));
+                if (value != null)
+                {
+                    if (!Directory.Exists((string)value))
+                    {
+                        continue;
+                    }
+
+                    overlayExe = Path.Combine((string)value, "GameOverlayUI.exe");
+                    newOverlayExe = Path.Combine((string)value, "GameOverlayUI64.exe");
+
                     break;
                 }
             }
-            if( string.IsNullOrEmpty( overlayExe ) )
-                Error( string.Empty, "Cannot find Steam installation directory" );
-            else if( !File.Exists( overlayExe ) )
-                Error( "File not found", overlayExe );
-            Debug.WriteLine( $"OVERLAY = {overlayExe}" );
+            if (string.IsNullOrEmpty(overlayExe) || string.IsNullOrEmpty(newOverlayExe))
+            {
+                Error(string.Empty, "Cannot find Steam installation directory");
+            }
+
+            if (File.Exists(overlayExe))
+            {
+                x32BitOverlayFound = true;
+            }
+            if (File.Exists(overlayExe))
+            {
+                x64BitOverlayFound = true;
+            }
+
+            if (x32BitOverlayFound && x64BitOverlayFound)
+            {
+                Error("File not found", overlayExe);
+            }
+
+            Debug.WriteLine($"OVERLAY = {overlayExe}");
 
             // Find the Steam process
             // Required for browser
-            Process[] proc = Process.GetProcessesByName( "Steam" );
-            if( proc.Length == 0 )
-                Error( "Process not found", "Cannot find Steam process" );
-            else if( proc.Length != 1 )
-                Error( "Process not found", "More than one Steam process running?" );
+            Process[] proc = Process.GetProcessesByName("Steam");
+            if (proc.Length == 0)
+            {
+                Error("Process not found", "Cannot find Steam process");
+            }
+            else if (proc.Length != 1)
+            {
+                Error("Process not found", "More than one Steam process running?");
+            }
             steam = proc[0];
 
             // Run the game
-            Debug.WriteLine( $"Detour {args[1]} -> {gameExe}" );
+            Debug.WriteLine($"Detour {args[1]} -> {gameExe}");
             ProcessStartInfo gameInfo = new ProcessStartInfo();
-            gameInfo.WorkingDirectory = Path.GetDirectoryName( gameExe );
+            gameInfo.WorkingDirectory = Path.GetDirectoryName(gameExe);
             gameInfo.FileName = gameExe;
-            game = Process.Start( gameInfo );
+            game = Process.Start(gameInfo);
 
             bool hooked = false;
-            while( !hooked )
+            while(!hooked)
             {
-                game.WaitForExit( 1000 );
+                game.WaitForExit(1000);
 
                 // Run the overlay
                 // based on https://github.com/SuiMachine/Steam-Overlay-Hooking-Helper
                 ProcessStartInfo overlayInfo = new ProcessStartInfo();
-                overlayInfo.WorkingDirectory = Path.GetDirectoryName( overlayExe );
-                overlayInfo.FileName = overlayExe;
+                if (x64BitOverlayFound)
+                {
+                    overlayInfo.WorkingDirectory = Path.GetDirectoryName(newOverlayExe);
+                    overlayInfo.FileName = newOverlayExe;
+                }
+                else
+                {
+                    overlayInfo.WorkingDirectory = Path.GetDirectoryName(overlayExe);
+                    overlayInfo.FileName = overlayExe;
+                }
                 overlayInfo.Arguments = $"-steampid {steam.Id} -pid {game.Id} -manuallyclearframes 0";
                 overlay = Process.Start( overlayInfo );
-                Debug.WriteLine( $"STEAM = {steam.Id} GAME = {game.Id} OVERLAY = {overlay.Id}" );
+                Debug.WriteLine($"STEAM = {steam.Id} GAME = {game.Id} OVERLAY = {overlay.Id}");
                 hooked = true;
             }
-
             game.WaitForExit();
             overlay.WaitForExit();
-            Debug.WriteLine( "Goodbye." );
+            Debug.WriteLine("Goodbye.");
         }
     }
 }
